@@ -15,7 +15,7 @@ import (
 func main() {
 	a := app.New()
 	win := a.NewWindow("Chess")
-	win.Resize(fyne.NewSize(800, 800))
+	win.Resize(fyne.NewSize(500, 500))
 	game := chess.NewGame()
 	grid := createGrid(game.Position().Board())
 	over := canvas.NewImageFromResource(nil)
@@ -34,8 +34,8 @@ func main() {
 }
 
 func createGrid(board *chess.Board) *fyne.Container {
+	var cells []fyne.CanvasObject
 
-	grid := container.NewGridWithColumns(8)
 	for y := 7; y >= 0; y-- {
 		for x := 0; x < 8; x++ {
 			bg := canvas.NewRectangle(color.Gray{0xE0})
@@ -45,10 +45,10 @@ func createGrid(board *chess.Board) *fyne.Container {
 			p := board.Piece(chess.Square(x + y*8))
 			img := canvas.NewImageFromResource(resourceForPiece(p))
 			img.FillMode = canvas.ImageFillContain
-			grid.Add(container.NewMax(bg, img))
+			cells = append(cells, container.NewMax(bg, img))
 		}
 	}
-	return grid
+	return container.New(&boardLayout{}, cells...)
 }
 
 func move(m *chess.Move, game *chess.Game, grid *fyne.Container, over *canvas.Image) {
