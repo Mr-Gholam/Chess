@@ -1,4 +1,4 @@
-//go:generate fyne bundle -o bundled.go pieces
+//go:generate fyne bundle -o bundled-pieces.go pieces
 
 package main
 

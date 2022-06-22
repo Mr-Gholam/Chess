@@ -1,7 +1,6 @@
 package main
 
 import (
-	"image/color"
 	"math/rand"
 	"time"
 
@@ -33,28 +32,10 @@ func main() {
 	win.ShowAndRun()
 }
 
-func createGrid(board *chess.Board) *fyne.Container {
-	var cells []fyne.CanvasObject
-
-	for y := 7; y >= 0; y-- {
-		for x := 0; x < 8; x++ {
-			bg := canvas.NewRectangle(color.Gray{0xE0})
-			if x%2 == y%2 {
-				bg.FillColor = color.Gray{0x30}
-			}
-			p := board.Piece(chess.Square(x + y*8))
-			img := canvas.NewImageFromResource(resourceForPiece(p))
-			img.FillMode = canvas.ImageFillContain
-			cells = append(cells, container.NewMax(bg, img))
-		}
-	}
-	return container.New(&boardLayout{}, cells...)
-}
-
 func move(m *chess.Move, game *chess.Game, grid *fyne.Container, over *canvas.Image) {
 	off := squareToOffset(m.S1())
 	cell := grid.Objects[off].(*fyne.Container)
-	img := cell.Objects[1].(*canvas.Image)
+	img := cell.Objects[2].(*canvas.Image)
 	pos1 := cell.Position()
 
 	over.Resource = img.Resource
@@ -69,7 +50,7 @@ func move(m *chess.Move, game *chess.Game, grid *fyne.Container, over *canvas.Im
 	cell = grid.Objects[off].(*fyne.Container)
 	pos2 := cell.Position()
 
-	animation := canvas.NewPositionAnimation(pos1, pos2, time.Millisecond*500, func(p fyne.Position) {
+	animation := canvas.NewPositionAnimation(pos1, pos2, time.Millisecond*400, func(p fyne.Position) {
 		over.Move(p)
 		over.Refresh()
 	})
@@ -79,22 +60,10 @@ func move(m *chess.Move, game *chess.Game, grid *fyne.Container, over *canvas.Im
 	game.Move(m)
 	refreshGrid(grid, game.Position().Board())
 	over.Hide()
+	over.Resource = nil
+	over.Refresh()
 }
-func refreshGrid(grid *fyne.Container, board *chess.Board) {
-	y, x := 7, 0
-	for _, cell := range grid.Objects {
-		p := board.Piece(chess.Square(x + y*8))
-		img := cell.(*fyne.Container).Objects[1].(*canvas.Image)
-		img.Resource = resourceForPiece(p)
-		img.Refresh()
 
-		x++
-		if x == 8 {
-			x = 0
-			y--
-		}
-	}
-}
 func squareToOffset(sq chess.Square) int {
 	x := sq % 8
 	y := 7 - ((sq - x) / 8)
