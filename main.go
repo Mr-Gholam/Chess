@@ -1,7 +1,6 @@
 package main
 
 import (
-	"math/rand"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -11,31 +10,30 @@ import (
 	"github.com/notnil/chess"
 )
 
+var (
+	grid *fyne.Container
+	over *canvas.Image
+	win  fyne.Window
+)
+
 func main() {
 	a := app.New()
-	win := a.NewWindow("Chess")
+	win = a.NewWindow("Chess")
 	win.Resize(fyne.NewSize(500, 500))
+
 	game := chess.NewGame()
-	grid := createGrid(game.Position().Board())
-	over := canvas.NewImageFromResource(nil)
+	grid = createGrid(game)
+
+	over = canvas.NewImageFromResource(nil)
 	over.Hide()
 	win.SetContent(container.NewMax(grid, container.NewWithoutLayout(over)))
-	go func() {
-		rand.Seed(time.Now().Unix())
-		for game.Outcome() == chess.NoOutcome {
-			time.Sleep(time.Millisecond * 500)
-			valid := game.ValidMoves()
-			m := valid[rand.Intn(len(valid))]
-			move(m, game, grid, over)
-		}
-	}()
 	win.ShowAndRun()
 }
 
 func move(m *chess.Move, game *chess.Game, grid *fyne.Container, over *canvas.Image) {
 	off := squareToOffset(m.S1())
 	cell := grid.Objects[off].(*fyne.Container)
-	img := cell.Objects[2].(*canvas.Image)
+	img := cell.Objects[2].(*piece)
 	pos1 := cell.Position()
 
 	over.Resource = img.Resource
