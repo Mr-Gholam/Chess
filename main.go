@@ -1,6 +1,7 @@
 package main
 
 import (
+	"image/color"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -12,9 +13,10 @@ import (
 )
 
 var (
-	grid *fyne.Container
-	over *canvas.Image
-	win  fyne.Window
+	grid  *fyne.Container
+	over  *canvas.Image
+	start *canvas.Rectangle
+	win   fyne.Window
 )
 
 func main() {
@@ -27,7 +29,11 @@ func main() {
 
 	over = canvas.NewImageFromResource(nil)
 	over.Hide()
-	win.SetContent(container.NewMax(grid, container.NewWithoutLayout(over)))
+
+	start = canvas.NewRectangle(color.Transparent)
+	start.StrokeWidth = 4
+
+	win.SetContent(container.NewMax(grid, container.NewWithoutLayout(start, over)))
 	win.ShowAndRun()
 }
 

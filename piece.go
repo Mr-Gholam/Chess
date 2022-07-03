@@ -1,17 +1,22 @@
 package main
 
 import (
-	"fmt"
+	"image/color"
 	"math/rand"
 	"time"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 	"github.com/notnil/chess"
 )
 
-var moveStart chess.Square = chess.NoSquare
+var (
+	moveStart    chess.Square = chess.NoSquare
+	okColor                   = color.NRGBA{0, 0xff, 0, 0xff}
+	okBGColor                 = color.NRGBA{0, 0xff, 0, 0x28}
+	notOKColor                = color.NRGBA{0xff, 0, 0, 0xff}
+	notOkBGColor              = color.NRGBA{0xff, 0, 0, 0x28}
+)
 
 type piece struct {
 	widget.Icon
@@ -30,26 +35,62 @@ func newPiece(g *chess.Game, sq chess.Square) *piece {
 }
 
 func (p *piece) Tapped(ev *fyne.PointEvent) {
-	if moveStart == chess.NoSquare {
-		moveStart = p.square
+	if moveStart == p.square {
+		moveStart = chess.NoSquare
+		start.Hide()
+		start.Refresh()
 		return
 	}
-	valid := p.game.ValidMoves()
-	for _, m := range valid {
-		if m.S1() == moveStart && m.S2() == p.square {
-			move(m, p.game, grid, over)
-			go func() {
-				time.Sleep(time.Second)
-				randomResponse(p.game)
-
-			}()
-			return
+	if moveStart == chess.NoSquare {
+		if m := isValidMove(p.square, chess.NoSquare, p.game); m != nil {
+			moveStart = p.square
+			start.FillColor = okBGColor
+			start.StrokeColor = okColor
+		} else {
+			start.FillColor = notOkBGColor
+			start.StrokeColor = notOKColor
 		}
+		off := squareToOffset(p.square)
+		cell := grid.Objects[off].(*fyne.Container)
+
+		start.Move(cell.Position())
+		start.Resize(cell.Size())
+		start.Refresh()
+		start.Show()
+
+		return
 	}
-	message := fmt.Sprintf("Cannot move piece %d to square %v", p.game.Position().Board().Piece(moveStart), p.square)
-	dialog.ShowInformation("Invalid move", message, win)
+
+	start.Hide()
+	start.Refresh()
+
+	if m := isValidMove(moveStart, p.square, p.game); m != nil {
+		moveStart = chess.NoSquare
+		move(m, p.game, grid, over)
+		go func() {
+			time.Sleep(time.Second / 2)
+			randomResponse(p.game)
+
+		}()
+		return
+	}
 
 	moveStart = chess.NoSquare
+
+	start.FillColor = notOkBGColor
+	start.StrokeColor = notOKColor
+
+	off := squareToOffset(p.square)
+	cell := grid.Objects[off].(*fyne.Container)
+	start.Move(cell.Position())
+	start.Resize(cell.Size())
+	start.Refresh()
+	start.Show()
+	go func() {
+		time.Sleep(time.Millisecond * 500)
+		start.Hide()
+		start.Refresh()
+	}()
 }
 
 func randomResponse(g *chess.Game) {
@@ -59,4 +100,15 @@ func randomResponse(g *chess.Game) {
 
 	move(m, g, grid, over)
 
+}
+
+func isValidMove(s1, s2 chess.Square, g *chess.Game) *chess.Move {
+	valid := g.ValidMoves()
+	for _, m := range valid {
+		if m.S1() == s1 && (s2 == chess.NoSquare || m.S2() == s2) {
+			return m
+		}
+	}
+
+	return nil
 }
