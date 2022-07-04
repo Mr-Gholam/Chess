@@ -17,6 +17,7 @@ var (
 	okBGColor                 = color.NRGBA{0, 0xff, 0, 0x28}
 	notOKColor                = color.NRGBA{0xff, 0, 0, 0xff}
 	notOkBGColor              = color.NRGBA{0xff, 0, 0, 0x28}
+	myTurn       bool         = true
 )
 
 type piece struct {
@@ -36,23 +37,25 @@ func newPiece(g *chess.Game, sq chess.Square) *piece {
 }
 
 func (p *piece) Dragged(ev *fyne.DragEvent) {
-	moveStart = p.square
-	off := squareToOffset(p.square)
-	cell := grid.Objects[off].(*fyne.Container)
-	img := cell.Objects[2].(*piece)
+	if myTurn == true {
+		moveStart = p.square
+		off := squareToOffset(p.square)
+		cell := grid.Objects[off].(*fyne.Container)
+		img := cell.Objects[2].(*piece)
 
-	pos := cell.Position().Add(ev.Position)
-	over.Move(pos.Subtract(fyne.NewPos(img.Size().Width/2, img.Size().Height/2)))
-	over.Resize(img.Size())
+		pos := cell.Position().Add(ev.Position)
+		over.Move(pos.Subtract(fyne.NewPos(img.Size().Width/2, img.Size().Height/2)))
+		over.Resize(img.Size())
 
-	if img.Resource != nil {
-		over.Resource = img.Resource
-		over.Show()
+		if img.Resource != nil {
+			over.Resource = img.Resource
+			over.Show()
 
-		img.Resource = nil
-		img.Refresh()
+			img.Resource = nil
+			img.Refresh()
+		}
+		over.Refresh()
 	}
-	over.Refresh()
 }
 
 func (p *piece) DragEnd() {
@@ -62,6 +65,7 @@ func (p *piece) DragEnd() {
 	if m := isValidMove(moveStart, sq, p.game); m != nil {
 
 		move(m, p.game, grid, over)
+		myTurn = false
 		go func() {
 			time.Sleep(time.Second / 2)
 			randomResponse(p.game)
@@ -88,75 +92,81 @@ func (p *piece) DragEnd() {
 }
 
 func (p *piece) Tapped(ev *fyne.PointEvent) {
-	if moveStart == p.square {
-		moveStart = chess.NoSquare
+	if myTurn == true {
+		if moveStart == p.square {
+			moveStart = chess.NoSquare
+			start.Hide()
+			start.Refresh()
+			return
+		}
+		if moveStart == chess.NoSquare {
+			if m := isValidMove(p.square, chess.NoSquare, p.game); m != nil {
+				moveStart = p.square
+				start.FillColor = okBGColor
+				start.StrokeColor = okColor
+			} else {
+				start.FillColor = notOkBGColor
+				start.StrokeColor = notOKColor
+			}
+			off := squareToOffset(p.square)
+			cell := grid.Objects[off].(*fyne.Container)
+
+			start.Move(cell.Position())
+			start.Resize(cell.Size())
+			start.Refresh()
+			start.Show()
+
+			return
+		}
+
 		start.Hide()
 		start.Refresh()
-		return
-	}
-	if moveStart == chess.NoSquare {
-		if m := isValidMove(p.square, chess.NoSquare, p.game); m != nil {
-			moveStart = p.square
-			start.FillColor = okBGColor
-			start.StrokeColor = okColor
-		} else {
-			start.FillColor = notOkBGColor
-			start.StrokeColor = notOKColor
-		}
-		off := squareToOffset(p.square)
+		off := squareToOffset(moveStart)
 		cell := grid.Objects[off].(*fyne.Container)
+
+		if m := isValidMove(moveStart, p.square, p.game); m != nil {
+			moveStart = chess.NoSquare
+			over.Move(cell.Position())
+			move(m, p.game, grid, over)
+			myTurn = false
+			go func() {
+				time.Sleep(time.Second / 2)
+				randomResponse(p.game)
+
+			}()
+			return
+		}
+
+		moveStart = chess.NoSquare
+
+		start.FillColor = notOkBGColor
+		start.StrokeColor = notOKColor
 
 		start.Move(cell.Position())
 		start.Resize(cell.Size())
 		start.Refresh()
 		start.Show()
-
-		return
-	}
-
-	start.Hide()
-	start.Refresh()
-	off := squareToOffset(moveStart)
-	cell := grid.Objects[off].(*fyne.Container)
-
-	if m := isValidMove(moveStart, p.square, p.game); m != nil {
-		moveStart = chess.NoSquare
-		over.Move(cell.Position())
-		move(m, p.game, grid, over)
 		go func() {
-			time.Sleep(time.Second / 2)
-			randomResponse(p.game)
-
+			time.Sleep(time.Millisecond * 500)
+			start.Hide()
+			start.Refresh()
 		}()
-		return
 	}
 
-	moveStart = chess.NoSquare
-
-	start.FillColor = notOkBGColor
-	start.StrokeColor = notOKColor
-
-	start.Move(cell.Position())
-	start.Resize(cell.Size())
-	start.Refresh()
-	start.Show()
-	go func() {
-		time.Sleep(time.Millisecond * 500)
-		start.Hide()
-		start.Refresh()
-	}()
 }
 
 func randomResponse(g *chess.Game) {
 	rand.Seed(time.Now().Unix())
 	valid := g.ValidMoves()
-	m := valid[rand.Intn(len(valid))]
+	if len(valid) != 0 {
+		m := valid[rand.Intn(len(valid))]
 
-	off := squareToOffset(m.S1())
-	cell := grid.Objects[off].(*fyne.Container)
-	over.Move(cell.Position())
-
-	move(m, g, grid, over)
+		off := squareToOffset(m.S1())
+		cell := grid.Objects[off].(*fyne.Container)
+		over.Move(cell.Position())
+		myTurn = true
+		move(m, g, grid, over)
+	}
 }
 
 func isValidMove(s1, s2 chess.Square, g *chess.Game) *chess.Move {
